@@ -1,0 +1,237 @@
+from graphics import Canvas
+import time
+import math
+import random
+    
+CANVAS_WIDTH = 500
+CANVAS_HEIGHT = 500
+BALL_SIZE=100
+DELAY = 0.001
+Orbital_R=CANVAS_HEIGHT/2
+BallR=20
+gravity=9.8
+dt=0.4
+COR=1
+
+
+def main():
+    vx=0
+    vy=0
+    dSx=0
+    dSy=0
+    #preposx=0
+    #preposy=0
+    nstep=10
+    dst=dt/nstep
+    canvas = Canvas(CANVAS_WIDTH, CANVAS_HEIGHT)
+    Orbitalcir=canvas.create_oval(0,0,Orbital_R*2,Orbital_R*2,'red')
+    
+    #ball=Ball(canvas,vx,vy,CANVAS_WIDTH-BallR,CANVAS_HEIGHT/2,BallR,50,'blue')
+    ball=Ball(canvas,vx,vy,CANVAS_WIDTH/2,CANVAS_HEIGHT-BallR,BallR,50,'Lime')
+    
+    dSx1=0
+    dSy1=0
+    vx1=0
+    vy1=0
+    ball2=Ball(canvas,vx1,vy1,BallR,CANVAS_HEIGHT/2,BallR,50,'yellow')
+    
+    #preposx1=0
+    #preposy1=0
+    #canvas.wait_for_click() 
+    while True:
+        
+        [preposx,preposy]=ball.getPosition()
+        [preposx1,preposy1]=ball2.getPosition()
+        for i in range(nstep):
+            dSx=vx*dst
+            dSy=vy*dst
+            
+            dSx1=vx1*dst
+            dSy1=vy1*dst
+            newpos=vector_Add([preposx,preposy],[dSx,dSy+0.5*gravity*dst**2])
+            newpos1=vector_Add([preposx1,preposy1],[dSx1,dSy1+0.5*gravity*dst**2])
+            
+            delta=correct_pos_vec(newpos)
+            delta1=correct_pos_vec(newpos1)
+            
+            newpos=vector_Add(newpos,delta)
+            newpos1=vector_Add(newpos1,delta1)
+            
+            
+            vx=(newpos[0]-preposx)/dst
+            vy=(newpos[1]-preposy)/dst
+            
+            vx1=(newpos1[0]-preposx1)/dst
+            vy1=(newpos1[1]-preposy1)/dst
+            
+            preposx=newpos[0]
+            preposy=newpos[1]
+            
+            preposx1=newpos1[0]
+            preposy1=newpos1[1]
+            
+            
+            if disBtwBall(newpos,newpos1)<2*BallR:
+                m=ball.getMass()
+                m1=ball2.getMass()
+                corrvec=overlapcorr(newpos,newpos1)
+                newpos=vector_Add(newpos,corrvec)
+                newpos1=vector_Add(newpos1,[-corrvec[0],-corrvec[1]])
+                centripetal_v=vector_dot([vx,vy],corrvec)/vector_Length(corrvec)
+                centripetal_v1=vector_dot([vx1,vy1],corrvec)/vector_Length(corrvec)
+                newV=(m * centripetal_v + m1 * centripetal_v1 - m1 * (centripetal_v - centripetal_v1) * COR) / (m + m1)
+                newV1 = (m * centripetal_v + m1 * centripetal_v1 - m * (centripetal_v1 - centripetal_v) * COR) / (m + m1)
+                
+                Dv1=[(newV-centripetal_v)*corrvec[0]/vector_Length(corrvec),(newV-centripetal_v)*corrvec[1]/vector_Length(corrvec)]
+                Dv2=[(newV1-centripetal_v1)*corrvec[0]/vector_Length(corrvec),(newV1-centripetal_v1)*corrvec[1]/vector_Length(corrvec)]
+                vx,vy=vector_Add([vx,vy],Dv1)
+                vx1,vy1=vector_Add([vx1,vy1],Dv2)
+                canvas.moveto(ball.getname(), newpos[0]-BallR, newpos[1]-BallR)
+                canvas.moveto(ball2.getname(), newpos1[0]-BallR, newpos1[1]-BallR)
+            
+        
+        canvas.moveto(ball.getname(), newpos[0]-BallR, newpos[1]-BallR)    
+        canvas.moveto(ball2.getname(), newpos1[0]-BallR, newpos1[1]-BallR)
+        
+        
+        
+        
+        time.sleep(1/1000000)
+
+def overlapcorr(newpos,newpos1):
+    corr=BallR-disBtwBall(newpos,newpos1)/2
+    a=vector_Gen(newpos,newpos1)
+    a=[a[0]*corr/vector_Length(a),a[1]*corr/vector_Length(a)]
+    return a
+
+
+def disBtwBall(newpos,newpos1):
+    a=vector_Gen(newpos,newpos1)
+    
+    return vector_Length(a)
+        
+        
+def correct_pos_vec(newpos):
+    a=vector_Gen([Orbital_R,Orbital_R],newpos)
+    dis=vector_Length(a)+BallR-Orbital_R
+    a=[a[0]*dis/vector_Length(a),a[1]*dis/vector_Length(a)]
+    return a
+    
+
+def vector_Add(a_cord,b_cord):
+    return [a_cord[0]+b_cord[0],a_cord[1]+b_cord[1]]
+        
+
+def lamda(canvas,ball,Orbitalcir):
+    delta=Ball_orbit_Dis(canvas,ball,Orbitalcir)+BallR-Orbital_R
+    a=vector_Gen([Orbital_R,Orbital_R],ball.getPosition())
+    a=[a[0]*delta/vector_Length(a),a[1]*delta/vector_Length(a)]
+    
+    return a
+    
+
+def Ball_orbit_Dis(canvas,ball,Orbitalcir):
+    
+    top_y = canvas.get_top_y(Orbitalcir)
+    Left_x = canvas.get_left_x(Orbitalcir)
+    Orbital_cor=[Left_x+Orbital_R,top_y+Orbital_R]
+    dis=vector_Length(vector_Gen(ball.getPosition(),Orbital_cor))
+    return dis
+
+def OutofOrbit(canvas,ball,Orbitalcir):
+    contactpot=ball.getBall_R()+Ball_orbit_Dis(canvas,ball,Orbitalcir)
+    if contactpot > Orbital_R:
+        return True
+    return False
+
+def vectorDecom(a,b):
+    b_parll=[vector_dot(a,b)/vector_Length(b)**2*b[0],vector_dot(a,b)/vector_Length(b)**2*b[1]]
+    b_vert=[a[0]-b_parll[0],a[1]-b_parll[1]]
+    return b_parll,b_vert
+
+def vector_Gen(a_cord,b_cord):
+    return [a_cord[0]-b_cord[0],a_cord[1]-b_cord[1]]
+
+def vector_dot(a,b):
+    return a[0]*b[0]+a[1]*b[1]
+
+def vector_Length(a):
+    return math.sqrt(a[0]**2+a[1]**2)
+
+
+class Ball:
+    def __init__(self,canvas,Vx, Vy,Ball_x,Ball_y,Ball_R,mass,color):
+        self.__Vx=Vx
+        self.__Vy=Vy
+        #self.__preVx=Vx
+        #self.__preVy=Vy
+        
+        
+        self.__Gx=0
+        self.__Gy=gravity
+        self.__CollBtwBallFlag=True
+        self.__CollBtwWall_x_Flag=True
+        self.__CollBtwWall_y_Flag=True 
+        self.__Ball_x=Ball_x
+        self.__Ball_y=Ball_y
+        self.__Ball_R=Ball_R
+        self.__mass=mass
+        self.__color=color
+        self.__canvas=canvas
+        self.__name=canvas.create_oval(Ball_x-Ball_R,Ball_y-Ball_R,Ball_x+Ball_R,Ball_y+Ball_R,color)
+    
+    def __del__(self):
+        self.__canvas.delete(self.__name)
+    
+    def setVelocity(self,Vx, Vy):
+        self.__Vx=Vx
+        self.__Vy=Vy
+    def getVelocity(self):
+        return self.__Vx ,self.__Vy
+    
+    def setGravity(self,Gx, Gy):
+        self.__Gx=Gx
+        self.__Gy=Gy
+    
+    def getGravity(self):
+        return self.__Gx ,self.__Gy
+    
+    def getname(self):
+        return self.__name
+    
+    def getcanvas(self):
+        return self.__canvas
+        
+    def getPosition(self):
+        top_y = self.__canvas.get_top_y(self.__name)
+        Left_x =self.__canvas.get_left_x(self.__name)
+        self.__Ball_x=Left_x+self.__Ball_R
+        self.__Ball_y=top_y+self.__Ball_R
+        return self.__Ball_x ,self.__Ball_y
+    def getBall_R(self):
+        return self.__Ball_R
+        
+    def getMass(self):
+        return self.__mass
+        
+    def getCollBtwBallFlag(self):
+        return self.__CollBtwBallFlag
+    
+    def setCollBtwBallFlag(self,a):
+        self.__CollBtwBallFlag=a
+    
+    def getCollBtwWall_x_Flag(self):
+        return self.__CollBtwWall_x_Flag
+    
+    def setCollBtwWall_x_Flag(self,a):
+        self.__CollBtwWall_x_Flag=a
+    
+    def getCollBtwWall_y_Flag(self):
+        return self.__CollBtwWall_y_Flag
+    
+    def setCollBtwWall_y_Flag(self,a):
+        self.__CollBtwWall_y_Flag=a
+        
+
+if __name__ == '__main__':
+    main()
